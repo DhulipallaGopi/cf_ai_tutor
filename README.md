@@ -1,4 +1,4 @@
-# cf_ai_tutor 🎓
+# cf_ai_tutor 
 
 > An AI-powered adaptive tutor built entirely on Cloudflare — using Llama 3.3 (Workers AI), Durable Objects for persistent memory, Cloudflare Workflows for multi-step study plan generation, and a chat UI served via Cloudflare Assets.
 
