@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lumen — AI Tutor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0e0f11;--sur:#161820;--card:#1e2028;--bdr:rgba(255,255,255,.08);
+      --txt:#e8e6e0;--muted:#7a7870;--gold:#d4a843;--gold-l:#f0c96a;
+      --grn:#4ade80;
+      --f:'Inter',sans-serif;--fd:'Playfair Display',Georgia,serif;--fm:'JetBrains Mono',monospace;
+    }
+    html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--f)}
+
+    /* HEADER */
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--sur);border-bottom:1px solid var(--bdr);flex-shrink:0}
+    .logo{font-family:var(--fd);font-size:1.4rem;color:var(--gold-l)}
+    .logo span{font-family:var(--f);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-left:10px}
+    .hdr-r{display:flex;align-items:center;gap:10px}
+    #subj-pill{display:none;align-items:center;gap:5px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.25);border-radius:20px;padding:4px 10px;font-size:.72rem;color:var(--gold);font-family:var(--fm);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .btn-sm{background:none;border:1px solid var(--bdr);color:var(--muted);border-radius:6px;padding:5px 12px;font-size:.75rem;cursor:pointer;font-family:var(--f);transition:all .15s}
+    .btn-sm:hover{border-color:var(--gold);color:var(--gold-l)}
+
+    /* LAYOUT */
+    .layout{display:flex;height:calc(100vh - 53px);overflow:hidden}
+
+    /* SIDEBAR */
+    .sidebar{width:256px;flex-shrink:0;background:var(--sur);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+    .sb-hdr{padding:14px 14px 8px;font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-bottom:1px solid var(--bdr)}
+    .sb-body{flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin}
+    .empty-plan{text-align:center;padding:28px 12px;color:var(--muted);font-size:.8rem;line-height:1.6}
+    .empty-plan .ico{font-size:2rem;display:block;margin-bottom:8px}
+
+    /* Plan card */
+    .plan-card{background:var(--card);border:1px solid var(--bdr);border-radius:10px;overflow:hidden}
+    .pc-head{padding:12px 14px;border-bottom:1px solid var(--bdr);background:rgba(212,168,67,.06)}
+    .pc-title{font-family:var(--fd);font-size:.95rem;color:var(--gold-l)}
+    .pc-meta{font-size:.68rem;color:var(--muted);font-family:var(--fm);margin-top:2px}
+    .pc-sec{padding:10px 14px;border-bottom:1px solid var(--bdr)}
+    .pc-sec:last-child{border-bottom:none}
+    .pc-lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+    .pc-txt{font-size:.78rem;line-height:1.5;color:#aaa}
+    .mod-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px dashed rgba(255,255,255,.05)}
+    .mod-row:last-child{border-bottom:none}
+    .mod-n{width:18px;height:18px;background:var(--gold);color:#000;border-radius:50%;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .mod-t{font-size:.78rem;color:#ccc;line-height:1.4}
+
+    /* Workflow form */
+    .sb-foot{padding:12px;border-top:1px solid var(--bdr);background:var(--sur)}
+    .sb-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+    .sb-input,.sb-select{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:7px 9px;color:var(--txt);font-size:.8rem;font-family:var(--f);margin-bottom:6px}
+    .sb-input:focus{outline:none;border-color:var(--gold)}
+    .sb-select{appearance:none;cursor:pointer}
+    .btn-gen{width:100%;background:var(--gold);color:#000;border:none;border-radius:6px;padding:9px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:var(--f);transition:background .15s}
+    .btn-gen:hover{background:var(--gold-l)}
+    .btn-gen:disabled{opacity:.4;cursor:not-allowed}
+    .wf-status{display:none;align-items:center;gap:6px;font-size:.72rem;color:var(--grn);font-family:var(--fm);margin-top:8px}
+    .wf-dot{width:6px;height:6px;border-radius:50%;background:var(--grn);animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* CHAT */
+    .chat{flex:1;display:flex;flex-direction:column;min-width:0}
+    .msgs{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin}
+
+    /* Welcome */
+    .welcome{margin:auto;text-align:center;max-width:480px;padding:16px}
+    .wc-title{font-family:var(--fd);font-size:1.9rem;color:var(--txt);margin-bottom:10px;line-height:1.15}
+    .wc-title em{color:var(--gold);font-style:italic}
+    .wc-sub{font-size:.87rem;color:var(--muted);line-height:1.6;margin-bottom:22px}
+    .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .chip{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:.8rem;color:#bbb;cursor:pointer;text-align:left;font-family:var(--f);transition:all .15s;line-height:1.4}
+    .chip:hover{border-color:var(--gold);color:var(--gold-l)}
+
+    /* Message bubbles */
+    .msg{display:flex;gap:10px;max-width:740px;animation:fadeUp .25s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .msg.user{flex-direction:row-reverse;margin-left:auto}
+    .av{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-top:3px}
+    .av.ai{background:var(--gold);color:#000;font-family:var(--fd)}
+    .av.u{background:#2e2e45;color:var(--txt)}
+    .bbl{padding:10px 14px;border-radius:10px;font-size:.87rem;line-height:1.65;max-width:100%;word-break:break-word}
+    .msg.ai .bbl{background:var(--card);border:1px solid var(--bdr);border-top-left-radius:3px}
+    .msg.user .bbl{background:#252540;border:1px solid rgba(255,255,255,.06);border-top-right-radius:3px}
+    .bbl strong{font-weight:600;color:var(--gold-l)}
+    .bbl em{color:var(--muted)}
+    .bbl code{font-family:var(--fm);font-size:.8em;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;color:#7dd3fc}
+    .bbl pre{background:#0a0a12;border:1px solid var(--bdr);border-radius:6px;padding:12px;overflow-x:auto;margin:8px 0;font-family:var(--fm);font-size:.79em;line-height:1.5;color:#c9d1d9}
+    .bbl ul,.bbl ol{padding-left:18px;margin:4px 0}
+    .bbl li{margin:3px 0}
+    .thinking{display:flex;gap:5px;padding:4px 0;align-items:center}
+    .thinking span{width:7px;height:7px;background:var(--muted);border-radius:50%;animation:bounce 1s infinite}
+    .thinking span:nth-child(2){animation-delay:.15s}
+    .thinking span:nth-child(3){animation-delay:.3s}
+    @keyframes bounce{0%,80%,100%{transform:scale(.7);opacity:.4}40%{transform:scale(1.2);opacity:1}}
+
+    /* INPUT */
+    .input-bar{padding:12px 20px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
+    .input-wrap{display:flex;align-items:flex-end;gap:8px;background:var(--card);border:1.5px solid var(--bdr);border-radius:12px;padding:9px 10px 9px 14px;transition:border-color .2s}
+    .input-wrap:focus-within{border-color:var(--gold)}
+    #msg{flex:1;background:none;border:none;outline:none;color:var(--txt);font-family:var(--f);font-size:.88rem;resize:none;line-height:1.5;max-height:140px;overflow-y:auto}
+    #msg::placeholder{color:var(--muted)}
+    #send{width:34px;height:34px;background:var(--gold);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,transform .1s}
+    #send:hover{background:var(--gold-l)}
+    #send:active{transform:scale(.92)}
+    #send:disabled{opacity:.4;cursor:not-allowed}
+    .hint{font-size:.68rem;color:var(--muted);text-align:center;margin-top:7px}
+
+    @media(max-width:620px){.sidebar{display:none}.chips{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <span class="logo">Lumen <span>AI Tutor · Llama 3.3 · Cloudflare</span></span>
+  </div>
+  <div class="hdr-r">
+    <div id="subj-pill">📚 <span id="subj-txt"></span></div>
+    <button class="btn-sm" onclick="newSession()">New Session</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-hdr">Study Plan</div>
+    <div class="sb-body" id="sb-body">
+      <div class="empty-plan">
+        <span class="ico">📖</span>
+        Generate a study plan below, or just start chatting!
+      </div>
+    </div>
+    <div class="sb-foot">
+      <div class="sb-lbl">Generate Study Plan</div>
+      <input class="sb-input" id="pt" placeholder="Topic (e.g. React Hooks)"/>
+      <select class="sb-select" id="pl">
+        <option value="beginner">Beginner</option>
+        <option value="intermediate" selected>Intermediate</option>
+        <option value="advanced">Advanced</option>
+      </select>
+      <button class="btn-gen" id="btn-gen" onclick="genPlan()">✦ Generate Plan</button>
+      <div class="wf-status" id="wf-status">
+        <span class="wf-dot"></span><span id="wf-msg">Working…</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <div class="chat">
+    <div class="msgs" id="msgs">
+      <div class="welcome" id="welcome">
+        <div class="wc-title">Learn anything,<br><em>deeply.</em></div>
+        <p class="wc-sub">Ask questions, get explanations, or request a quiz.<br>Your AI tutor remembers your whole conversation.</p>
+        <div class="chips">
+          <button class="chip" onclick="qs(this.textContent)">Explain closures in JavaScript with a real-world analogy</button>
+          <button class="chip" onclick="qs(this.textContent)">What's the difference between async/await and Promises?</button>
+          <button class="chip" onclick="qs(this.textContent)">Quiz me on the basics of neural networks</button>
+          <button class="chip" onclick="qs(this.textContent)">I'm confused about SQL JOINs — help me understand</button>
+        </div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <div class="input-wrap">
+        <textarea id="msg" rows="1" placeholder="Ask anything…"></textarea>
+        <button id="send" onclick="send()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Session ID ────────────────────────────────────────────────────────────
+const SID = localStorage.getItem("lsid") || crypto.randomUUID();
+localStorage.setItem("lsid", SID);
+const BASE = `/do/${SID}`;
+
+let busy = false;
+
+// ─── Load history on startup ───────────────────────────────────────────────
+(async () => {
+  try {
+    const r = await fetch(`${BASE}/history`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.messages && d.messages.length > 0) {
+      rmWelcome();
+      d.messages.forEach(m => bubble(m.role === "user" ? "user" : "ai", m.content, false));
+      if (d.subject) setSubj(d.subject);
+      scrollEnd();
+    }
+  } catch {}
+})();
+
+// ─── Send message ──────────────────────────────────────────────────────────
+async function send() {
+  const ta = document.getElementById("msg");
+  const text = ta.value.trim();
+  if (!text || busy) return;
+
+  rmWelcome();
+  bubble("user", text);
+  ta.value = "";
+  ta.style.height = "auto";
+  busy = true;
+  setDis(true);
+
+  const tid = showThink();
+
+  try {
+    const r = await fetch(`${BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+
+    rmEl(tid);
+
+    if (!r.ok) {
+      const err = await r.text();
+      bubble("ai", `⚠️ Error: ${err || "Something went wrong. Please try again."}`);
+    } else {
+      const d = await r.json();
+      bubble("ai", d.reply);
+      if (d.subject) setSubj(d.subject);
+    }
+  } catch (e) {
+    rmEl(tid);
+    bubble("ai", "⚠️ Network error — please check your connection and try again.");
+  } finally {
+    busy = false;
+    setDis(false);
+    document.getElementById("msg").focus();
+  }
+}
+
+function qs(t) { document.getElementById("msg").value = t; send(); }
+
+// ─── Generate study plan via Workflow ─────────────────────────────────────
+async function genPlan() {
+  const topic = document.getElementById("pt").value.trim();
+  const level = document.getElementById("pl").value;
+  if (!topic) { document.getElementById("pt").focus(); return; }
+
+  const btn = document.getElementById("btn-gen");
+  btn.disabled = true;
+  wfShow("Starting workflow…");
+
+  try {
+    const r = await fetch("/api/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, level, sessionId: SID }),
+    });
+    const { workflowId } = await r.json();
+    if (!workflowId) throw new Error("no workflow id");
+
+    const steps = ["Analyzing topic…", "Designing modules…", "Adding practice questions…", "Finalizing plan…"];
+    let si = 0;
+    const timer = setInterval(async () => {
+      wfShow(steps[si++ % steps.length]);
+      try {
+        const s = await fetch(`/api/plan/${workflowId}`).then(r => r.json());
+        if (s.status === "complete" && s.output) {
+          clearInterval(timer);
+          wfHide();
+          btn.disabled = false;
+          renderPlan(s.output);
+          // Save plan + set subject in Durable Object
+          await fetch(`${BASE}/plan`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(s.output) });
+          await fetch(`${BASE}/subject`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ subject: topic, level }) });
+          setSubj(topic);
+          rmWelcome();
+          bubble("ai", `📚 **Study plan ready for "${topic}"!** I've loaded your ${s.output.modules?.length ?? 0} modules into memory. Ask me anything about the material!`);
+        }
+        if (s.status === "errored") {
+          clearInterval(timer);
+          wfHide();
+          btn.disabled = false;
+          bubble("ai", "⚠️ Study plan generation failed. Please try again.");
+        }
+      } catch {}
+    }, 3000);
+
+  } catch (e) {
+    wfHide();
+    btn.disabled = false;
+    bubble("ai", "⚠️ Could not start workflow. Please try again.");
+  }
+}
+
+async function newSession() {
+  if (!confirm("Start a new session? This will clear your conversation history.")) return;
+  await fetch(`${BASE}/reset`, { method: "POST" }).catch(() => {});
+  localStorage.removeItem("lsid");
+  location.reload();
+}
+
+// ─── DOM helpers ───────────────────────────────────────────────────────────
+function bubble(role, text, anim = true) {
+  const c = document.getElementById("msgs");
+  const d = document.createElement("div");
+  d.className = `msg ${role}`;
+  if (!anim) d.style.animation = "none";
+  const html = role === "ai" ? md(text) : esc(text);
+  d.innerHTML = `<div class="av ${role === "user" ? "u" : "ai"}">${role === "user" ? "✦" : "L"}</div><div class="bbl">${html}</div>`;
+  c.appendChild(d);
+  scrollEnd();
+}
+
+function showThink() {
+  const id = "th" + Date.now();
+  const c = document.getElementById("msgs");
+  const d = document.createElement("div");
+  d.id = id; d.className = "msg ai";
+  d.innerHTML = `<div class="av ai">L</div><div class="bbl"><div class="thinking"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d);
+  scrollEnd();
+  return id;
+}
+
+function renderPlan(p) {
+  const mods = (p.modules||[]).map((m,i) =>
+    `<div class="mod-row"><span class="mod-n">${i+1}</span><span class="mod-t">${esc(m.title)}</span></div>`
+  ).join("");
+  const prereqs = (p.prerequisites||[]).map(x=>`<li>${esc(x)}</li>`).join("");
+  document.getElementById("sb-body").innerHTML = `
+    <div class="plan-card">
+      <div class="pc-head"><div class="pc-title">${esc(p.topic)}</div><div class="pc-meta">${p.level} · ~${p.estimatedHours}h</div></div>
+      <div class="pc-sec"><div class="pc-lbl">Overview</div><div class="pc-txt">${esc(p.overview)}</div></div>
+      ${prereqs ? `<div class="pc-sec"><div class="pc-lbl">Prerequisites</div><ul style="font-size:.77rem;padding-left:16px;color:#888;margin-top:4px">${prereqs}</ul></div>` : ""}
+      <div class="pc-sec"><div class="pc-lbl">Modules (${p.modules?.length})</div>${mods}</div>
+    </div>`;
+}
+
+function setSubj(s) { document.getElementById("subj-pill").style.display="flex"; document.getElementById("subj-txt").textContent=s; }
+function rmWelcome() { document.getElementById("welcome")?.remove(); }
+function rmEl(id) { document.getElementById(id)?.remove(); }
+function wfShow(m) { document.getElementById("wf-status").style.display="flex"; document.getElementById("wf-msg").textContent=m; }
+function wfHide() { document.getElementById("wf-status").style.display="none"; }
+function setDis(v) { document.getElementById("msg").disabled=v; document.getElementById("send").disabled=v; }
+function scrollEnd() { const e=document.getElementById("msgs"); e.scrollTop=e.scrollHeight; }
+
+function md(t) {
+  return esc(t)
+    .replace(/```[\w]*\n?([\s\S]*?)```/g,"<pre><code>$1</code></pre>")
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g,"<em>$1</em>")
+    .replace(/^#{1,3}\s+(.+)$/gm,"<strong>$1</strong>")
+    .replace(/^[-*]\s+(.+)$/gm,"<li>$1</li>")
+    .replace(/(<li>[\s\S]+<\/li>)/g,"<ul>$1</ul>")
+    .replace(/\n\n/g,"<br><br>")
+    .replace(/\n/g,"<br>");
+}
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// Auto-resize textarea
+const ta = document.getElementById("msg");
+ta.addEventListener("input", () => { ta.style.height="auto"; ta.style.height=Math.min(ta.scrollHeight,140)+"px"; });
+ta.addEventListener("keydown", e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();} });
+</script>
+</body>
+</html>
